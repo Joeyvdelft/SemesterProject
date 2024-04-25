@@ -1,4 +1,6 @@
 # This repository contains several files:
-# One is an up-to-date CSV file of several different variables extracted from CPS Demographic data of 10 U.S.A. cities called "CPS Demographic Data Semester Project.csv" which can be found in releases.
-# Another is the code that was used to retrieve this data called "Demographic Dataset Code.ipynb".
-# The last is code that is ran every month that updates this dataset to keep it up-to-date called "Dataset Updater".
+# A CSV file of several different variables extracted from CPS Demographic data of 10 U.S.A. cities called "CPS Demographic Data Semester Project.csv" (found in releases).
+# Code that was used to retrieve this data called "Demographic Dataset Code.ipynb".
+# Code that was used to proces this CSV File to make it appropriate for graphical analysis called "Adjusting.Dataset.Code.ipynb".
+# Dataset used for Streamlit resulting from adjusting code called "Processed.Demographic.Data.csv".
+# Code that was used to create a graphical overview of each city in Streamlit called "streamlit_app.py".
