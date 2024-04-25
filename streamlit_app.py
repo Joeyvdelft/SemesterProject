@@ -74,17 +74,21 @@ for ax in axs:
     ax.grid(True)
 st.pyplot(fig)
 
-# Categorical variables - Annual Stacked Bar Charts
-st.header("Annual Categorical Data Distribution")
-for category in ['Race', 'Education Level', 'Marital Status', 'Employment Status', 'Household Income']:
-    st.subheader(f'{category} Distribution Over Time')
+# Categorical count variables - Stacked Bar Charts for annual data
+categorical_groups = {
+    'Race': ['White', 'Black', 'Native American', 'Asian', 'Other Race'],
+    'Education Level': ['No Diploma', 'High School Degree', 'Higher Education Degree'],
+    'Marital Status': ['Married', 'Not Married'],
+    'Employment Status': ['Employed', 'Unemployed', 'Retired'],
+    'Household Income': ['Less than $5,000', '$5,000 to $25,000', '$25,000 to $50,000', '$50,000 to $150,000', '$150,000 or more']
+}
+
+for group_name, categories in categorical_groups.items():
+    st.subheader(f'{group_name} Distribution Over Time (Annual)')
     fig, ax = plt.subplots()
-    columns = [col for col in annual_city_data.columns if col.startswith(category)]
-    bottom = None
-    for col in columns:
-        ax.bar(annual_city_data['Year'], annual_city_data[col], bottom=bottom, label=col)
-        bottom = annual_city_data[col] if bottom is None else bottom + annual_city_data[col]
-    ax.set_title(f'Annual {category} Distribution Over Time')
+    for category in categories:
+        ax.bar(city_data['Year'], city_data[category], bottom=city_data[categories[:categories.index(category)]].sum(axis=1), label=category)
+    ax.set_title(f'Annual {group_name} Distribution')
     ax.set_xlabel('Year')
     ax.set_ylabel('Percentage')
     ax.legend(title='Categories')
