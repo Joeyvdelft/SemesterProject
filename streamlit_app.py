@@ -45,20 +45,15 @@ def load_data():
     df['Between $50,000 and $150,000'] = df[[f'HEFAMINC_{i}' for i in range(12, 16)]].sum(axis=1)
     df['$150,000 or More'] = df['HEFAMINC_16']
     
-    # Aggregating categorical data by Year and City
-    group_cols = ['Year', 'City'] + [col for col in df.columns if 'Race' in col or 'Education' in col or 'Marital' in col or 'Employment' in col or 'Income' in col]
-    categorical_df = df[group_cols].groupby(['Year', 'City']).sum().reset_index()
-    
-    # Combine monthly data for mean variables separately
-    mean_cols = ['Date', 'City', 'PRTAGE_mean', 'PESEX_mean']
-    mean_df = df[mean_cols].copy()
+    # Group by Year and City, summing up the new categories
+    grouping_cols = ['White', 'Black', 'Native American', 'Asian', 'Other Race', 'No Diploma', 'High School Degree', 'Higher Education Degree',
+                     'Married', 'Not Married', 'Employed', 'Unemployed', 'Retired', 'Less than $5,000', 'Between $5,000 and $25,000',
+                     'Between $25,000 and $50,000', 'Between $50,000 and $150,000', '$150,000 or More']
+    df = df.groupby(['Year', 'City'])[grouping_cols + ['PESEX_mean', 'PRTAGE_mean']].sum().reset_index()
 
-    # Merge categorical yearly data with monthly mean data
-    df = pd.merge(mean_df, categorical_df, on=['Year', 'City'])
-
-    # Normalize categorical data to percentages
-    cat_columns = df.columns[df.columns.str.contains('Race|Education|Marital|Employment|Income')]
-    df[cat_columns] = df[cat_columns].div(df[cat_columns].sum(axis=1), axis=0) * 100
+    # Convert counts to percentages
+    for col in grouping_cols:
+        df[col] = df[col] / df[grouping_cols].sum(axis=1) * 100
 
     return df
 
@@ -74,16 +69,16 @@ city_data = data[data['City'] == selected_city]
 st.title('Demographic Trends Analysis')
 st.write(f"Data visualization for {selected_city}")
 
-# Numeric variables: Monthly data
-st.header("Monthly Average Age and Gender Ratio")
+# Numeric variables
+st.header("Average Age and Gender Ratio Over Time")
 fig, axs = plt.subplots(2, 1, figsize=(10, 10))
-axs[0].plot(city_data['Date'], city_data['PRTAGE_mean'], marker='o')
+axs[0].plot(city_data['Year'], city_data['PRTAGE_mean'], marker='o')
 axs[0].set_title('Average Age Over Time')
-axs[0].set_xlabel('Date')
+axs[0].set_xlabel('Year')
 axs[0].set_ylabel('Average Age')
-axs[1].plot(city_data['Date'], city_data['PESEX_mean'], marker='o', color='b')
+axs[1].plot(city_data['Year'], city_data['PESEX_mean'], marker='o', color='b')
 axs[1].set_title('Percentage of Male Population Over Time')
-axs[1].set_xlabel('Date')
+axs[1].set_xlabel('Year')
 axs[1].set_ylabel('Percentage of Males')
 for ax in axs:
     ax.grid(True)
