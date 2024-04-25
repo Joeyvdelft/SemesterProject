@@ -28,11 +28,11 @@ def load_data():
         'Employed': ['PEMLR_1', 'PEMLR_2'],
         'Unemployed': ['PEMLR_-1', 'PEMLR_3', 'PEMLR_4', 'PEMLR_6', 'PEMLR_7'],
         'Retired': 'PEMLR_5',
-        'Less than $5,000': 'HEFAMINC_1',
-        'Between $5,000 and $25,000': [f'HEFAMINC_{i}' for i in range(2, 8)],
-        'Between $25,000 and $50,000': [f'HEFAMINC_{i}' for i in range(8, 12)],
-        'Between $50,000 and $150,000': [f'HEFAMINC_{i}' for i in range(12, 16)],
-        '$150,000 or More': 'HEFAMINC_16'
+        'Less than 5,000': 'HEFAMINC_1',
+        'Between 5,000 and 25,000': [f'HEFAMINC_{i}' for i in range(2, 8)],
+        'Between 25,000 and 50,000': [f'HEFAMINC_{i}' for i in range(8, 12)],
+        'Between 50,000 and 150,000': [f'HEFAMINC_{i}' for i in range(12, 16)],
+        '150,000 or More': 'HEFAMINC_16'
     }
     
     for category, cols in categories.items():
@@ -80,15 +80,26 @@ ax2.tick_params(axis='y', labelcolor='red')
 fig.tight_layout()
 st.pyplot(fig)
 
-# Categorical variables - Annual Stacked Bar Charts
+# Plotting the categorical variables
+category_mappings = {
+    'Race': ['White', 'Black', 'Native American', 'Asian', 'Other Race'],
+    'Education Level': ['No Diploma', 'High School Degree', 'Higher Education Degree'],
+    'Marital Status': ['Married', 'Not Married'],
+    'Employment Status': ['Employed', 'Unemployed', 'Retired'],
+    'Household Income in $': ['Less than 5,000', 'Between 5,000 and 25,000', 'Between 25,000 and 50,000',
+                         'Between 50,000 and 150,000', '150,000 or More']
+}
+
 st.header(f"Annual Categorical Data Distribution for {selected_city}")
-categorical_cols = list(yearly_data.columns[2:])  # All columns except 'Year' and 'City'
-fig, ax = plt.subplots(figsize=(10, 6))
-bottom = np.zeros(len(annual_city_data['Year']))
-for col in categorical_cols:
-    ax.bar(annual_city_data['Year'], annual_city_data[col], bottom=bottom, label=col)
-    bottom += annual_city_data[col].values
-ax.set_ylabel('Percentage')
-ax.set_title('Categorical Data Distribution by Year')
-ax.legend()
-st.pyplot(fig)
+for category_name, columns in category_mappings.items():
+    st.subheader(f"{category_name} Distribution Over Time")
+    fig, ax = plt.subplots(figsize=(10, 5))
+    bottom = np.zeros(len(annual_city_data['Year']))
+    for col in columns:
+        ax.bar(annual_city_data['Year'], annual_city_data[col], bottom=bottom, label=col)
+        bottom += annual_city_data[col]
+    ax.set_xlabel('Year')
+    ax.set_ylabel('Percentage')
+    ax.legend()
+    ax.grid(True)
+    st.pyplot(fig)
