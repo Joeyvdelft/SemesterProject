@@ -10,15 +10,16 @@ def load_data():
     df['Year'] = df['Date'].dt.year
     
     # Adjusting PESEX_mean to reflect correct percentage
-    df['PESEX_mean'] = (df['PESEX_mean'] - 1) * -100 - 100
+    df['PESEX_mean'] = (df['PESEX_mean'] - 1) * 100
 
-    # Recoding categorical variables into simplified groups
+    # Aggregating monthly data into yearly and recoding variables
     # Race
+    race_columns = [f'PTDTRACE_{i}' for i in range(1, 27)]
     df['White'] = df['PTDTRACE_1']
     df['Black'] = df['PTDTRACE_2']
     df['Native American'] = df['PTDTRACE_3']
     df['Asian'] = df['PTDTRACE_4']
-    df['Other Race'] = df[[f'PTDTRACE_{i}' for i in range(5, 27)]].sum(axis=1)
+    df['Other Race'] = df[race_columns[4:]].sum(axis=1)
     
     # Education
     df['No Diploma'] = df[[f'PEEDUCA_{i}' for i in range(31, 39)] + ['PEEDUCA_-1']].sum(axis=1)
@@ -41,15 +42,14 @@ def load_data():
     df['Between $50,000 and $150,000'] = df[[f'HEFAMINC_{i}' for i in range(12, 16)]].sum(axis=1)
     df['$150,000 or More'] = df['HEFAMINC_16']
     
-    # Aggregating monthly data into yearly for categorical variables
-    annual_data = df.groupby(['Year', 'City']).sum().reset_index()
-    for col in ['White', 'Black', 'Native American', 'Asian', 'Other Race', 'No Diploma', 'High School Degree',
-                'Higher Education Degree', 'Married', 'Not Married', 'Employed', 'Unemployed', 'Retired', 'Less than $5,000',
-                'Between $5,000 and $25,000', 'Between $25,000 and $50,000', 'Between $50,000 and $150,000', '$150,000 or More']:
-        annual_data[col] = annual_data[col] / annual_data[col].sum() * 100  # Convert counts to percentages
+    # Grouping and aggregating data annually
+    aggregate_dict = {**{col: 'sum' for col in df.columns if 'PESEX_mean' not in col and 'PRTAGE_mean' not in col and 'Year' not in col and 'City' not in col},
+                      'PESEX_mean': 'mean', 'PRTAGE_mean': 'mean'}
+    df = df.groupby(['Year', 'City']).agg(aggregate_dict).reset_index()
 
-    # Merge the annual data back with the original df for mean calculations
-    df = df.merge(annual_data, on=['Year', 'City'], suffixes=('', '_yearly'))
+    # Convert counts to percentages
+    for col in grouping_cols:
+        df[col] = df[col] / df[grouping_cols].sum(axis=1) * 100
 
     return df
 
@@ -68,31 +68,37 @@ st.write(f"Data visualization for {selected_city}")
 # Numeric variables
 st.header("Average Age and Gender Ratio Over Time")
 fig, axs = plt.subplots(2, 1, figsize=(10, 10))
-axs[0].plot(city_data['Date'], city_data['PRTAGE_mean'], marker='o')
+axs[0].plot(city_data['Year'], city_data['PRTAGE_mean'], marker='o')
 axs[0].set_title('Average Age Over Time')
-axs[0].set_xlabel('Date')
+axs[0].set_xlabel('Year')
 axs[0].set_ylabel('Average Age')
-axs[1].plot(city_data['Date'], city_data['PESEX_mean'], marker='o', color='b')
+axs[1].plot(city_data['Year'], city_data['PESEX_mean'], marker='o', color='b')
 axs[1].set_title('Percentage of Male Population Over Time')
-axs[1].set_xlabel('Date')
+axs[1].set_xlabel('Year')
 axs[1].set_ylabel('Percentage of Males')
 for ax in axs:
     ax.grid(True)
 st.pyplot(fig)
 
-# Categorical count variables - Stacked Bar Charts (Yearly)
-st.header("Yearly Categorical Distribution Trends")
-categories = ['White', 'Black', 'Native American', 'Asian', 'Other Race', 'No Diploma', 'High School Degree', 'Higher Education Degree',
-              'Married', 'Not Married', 'Employed', 'Unemployed', 'Retired', 'Less than $5,000', 'Between $5,000 and $25,000',
-              'Between $25,000 and $50,000', 'Between $50,000 and $150,000', '$150,000 or More']
-fig, ax = plt.subplots()
-bottom = None
-for category in categories:
-    ax.bar(city_data['Year'], city_data[category + '_yearly'], bottom=bottom, label=category)
-    bottom = city_data[category + '_yearly'] if bottom is None else bottom + city_data[category + '_yearly']
-ax.set_title('Categorical Distribution Over Time (Yearly)')
-ax.set_xlabel('Year')
-ax.set_ylabel('Percentage')
-ax.legend(title='Categories')
-ax.grid(True)
-st.pyplot(fig)
+# Categorical count variables - Stacked Bar Charts
+categorical_groups = {
+    'Race': ['White', 'Black', 'Native American', 'Asian', 'Other Race'],
+    'Education Level': ['No Diploma', 'High School Degree', 'Higher Education Degree'],
+    'Marital Status': ['Married', 'Not Married'],
+    'Employment Status': ['Employed', 'Unemployed', 'Retired'],
+    'Household Income': ['Less than $5,000', 'Between $5,000 and $25,000', 'Between $25,000 and $50,000', 'Between $50,000 and $150,000', '$150,000 or More']
+}
+
+for group_name, categories in categorical_groups.items():
+    st.subheader(f'{group_name} Distribution Over Time')
+    fig, ax = plt.subplots()
+    bottom = None
+    for category in categories:
+        ax.bar(city_data['Year'], city_data[category], bottom=bottom, label=category)
+        bottom = city_data[category] if bottom is None else bottom + city_data[category]
+    ax.set_title(f'{group_name} Distribution Over Time')
+    ax.set_xlabel('Year')
+    ax.set_ylabel('Percentage')
+    ax.legend(title='Categories')
+    ax.grid(True)
+    st.pyplot(fig)
