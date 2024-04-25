@@ -2,4 +2,5 @@
 # An up-to-date CSV file of several different variables extracted from CPS Demographic data of 10 U.S.A. cities called "CPS Demographic Data Semester Project.csv".
 # Code that was used to retrieve this data called "Demographic Dataset Code.ipynb".
 # Code that is ran every month that updates this dataset to keep it up-to-date called "Dataset Updater".
-# Code that processes the full dataset to make it appropriate for graphical analysis called "Processed.Demographic.Data.csv".
+# Code that processes the up-to-date dataset to make it appropriate for graphical analysis called "Adjusting.Dataset.Code.ipynb".
+# Dataset used for Streamlit resulting from adjusting code called "Processed.Demographic.Data.csv".
