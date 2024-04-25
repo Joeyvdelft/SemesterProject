@@ -10,7 +10,7 @@ def load_data():
     df['Year'] = df['Date'].dt.year
     
     # Adjusting PESEX_mean to reflect correct percentage
-    df['PESEX_mean'] = (df['PESEX_mean'] - 1) * -100 - 100
+    df['PESEX_mean'] = (df['PESEX_mean'] - 1) * 100
 
     # Aggregating monthly data into yearly and recoding variables
     # Race
@@ -42,21 +42,21 @@ def load_data():
     df['Between $50,000 and $150,000'] = df[[f'HEFAMINC_{i}' for i in range(12, 16)]].sum(axis=1)
     df['$150,000 or More'] = df['HEFAMINC_16']
     
-    # Group by Year and City, summing up the new categories
+    # Group by Year and City, summing up the new categories, keeping monthly data for means
     grouping_cols = ['White', 'Black', 'Native American', 'Asian', 'Other Race', 'No Diploma', 'High School Degree', 'Higher Education Degree',
                      'Married', 'Not Married', 'Employed', 'Unemployed', 'Retired', 'Less than $5,000', 'Between $5,000 and $25,000',
                      'Between $25,000 and $50,000', 'Between $50,000 and $150,000', '$150,000 or More']
-    df_grouped = df.groupby(['Year', 'City'])[grouping_cols].sum().reset_index()
+    # Aggregating categorical data by year
+    yearly_data = df.groupby(['Year', 'City'])[grouping_cols].sum().reset_index()
+    # Merging yearly aggregated data with original monthly data for means
+    monthly_means = df[['Date', 'City', 'PESEX_mean', 'PRTAGE_mean']].copy()
+    df = pd.merge(yearly_data, monthly_means, on=['City'], how='left')
 
-    # Convert counts to percentages for categorical groups
+    # Convert counts to percentages
     for col in grouping_cols:
-        df_grouped[col] = df_grouped[col] / df_grouped[grouping_cols].sum(axis=1) * 100
-    
-    # Aggregate mean values separately
-    df_means = df.groupby(['Year', 'City'])['PESEX_mean', 'PRTAGE_mean'].mean().reset_index()
-    
-    # Merge mean values and categorical percentages
-    return pd.merge(df_grouped, df_means, on=['Year', 'City'])
+        df[col] = df[col] / df[grouping_cols].sum(axis=1) * 100
+
+    return df
 
 data = load_data()
 
