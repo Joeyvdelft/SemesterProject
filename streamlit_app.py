@@ -42,19 +42,9 @@ def load_data():
     df['Between $50,000 and $150,000'] = df[[f'HEFAMINC_{i}' for i in range(12, 16)]].sum(axis=1)
     df['$150,000 or More'] = df['HEFAMINC_16']
     
-    # Group by Year and City, summing up the new categories, keeping monthly data for means
-    grouping_cols = ['White', 'Black', 'Native American', 'Asian', 'Other Race', 'No Diploma', 'High School Degree', 'Higher Education Degree',
-                     'Married', 'Not Married', 'Employed', 'Unemployed', 'Retired', 'Less than $5,000', 'Between $5,000 and $25,000',
-                     'Between $25,000 and $50,000', 'Between $50,000 and $150,000', '$150,000 or More']
-    # Aggregating categorical data by year
-    yearly_data = df.groupby(['Year', 'City'])[grouping_cols].sum().reset_index()
-    # Merging yearly aggregated data with original monthly data for means
-    monthly_means = df[['Date', 'City', 'PESEX_mean', 'PRTAGE_mean']].copy()
-    df = pd.merge(yearly_data, monthly_means, on=['City'], how='left')
-
     # Convert counts to percentages
-    for col in grouping_cols:
-        df[col] = df[col] / df[grouping_cols].sum(axis=1) * 100
+    for col in df.columns[7:]:
+        df[col] = df[col] / df[df.columns[7:]].sum(axis=1) * 100
 
     return df
 
