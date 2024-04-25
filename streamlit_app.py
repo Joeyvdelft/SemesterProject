@@ -10,7 +10,7 @@ def load_data():
     df['Year'] = df['Date'].dt.year
     
     # Adjusting PESEX_mean to reflect correct percentage
-    df['PESEX_mean'] = (df['PESEX_mean'] - 1) * 100
+    df['PESEX_mean'] = (df['PESEX_mean'] - 1) * -100 - 100
 
     # Aggregating monthly data into yearly and recoding variables
     # Race
@@ -46,13 +46,17 @@ def load_data():
     grouping_cols = ['White', 'Black', 'Native American', 'Asian', 'Other Race', 'No Diploma', 'High School Degree', 'Higher Education Degree',
                      'Married', 'Not Married', 'Employed', 'Unemployed', 'Retired', 'Less than $5,000', 'Between $5,000 and $25,000',
                      'Between $25,000 and $50,000', 'Between $50,000 and $150,000', '$150,000 or More']
-    df = df.groupby(['Year', 'City'])[grouping_cols + ['PESEX_mean', 'PRTAGE_mean']].sum().reset_index()
+    df_grouped = df.groupby(['Year', 'City'])[grouping_cols].sum().reset_index()
 
-    # Convert counts to percentages
+    # Convert counts to percentages for categorical groups
     for col in grouping_cols:
-        df[col] = df[col] / df[grouping_cols].sum(axis=1) * 100
-
-    return df
+        df_grouped[col] = df_grouped[col] / df_grouped[grouping_cols].sum(axis=1) * 100
+    
+    # Aggregate mean values separately
+    df_means = df.groupby(['Year', 'City'])['PESEX_mean', 'PRTAGE_mean'].mean().reset_index()
+    
+    # Merge mean values and categorical percentages
+    return pd.merge(df_grouped, df_means, on=['Year', 'City'])
 
 data = load_data()
 
