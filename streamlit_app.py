@@ -1,79 +1,105 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
-import numpy as np
 
-# Function to load and cache data
 @st.cache
 def load_data():
     url = 'https://raw.githubusercontent.com/Joeyvdelft/SemesterProject/File/Processed.Demographic.Data.csv'
     df = pd.read_csv(url)
     df['Date'] = pd.to_datetime(df['Date'])
     df['Year'] = df['Date'].dt.year
-    # Correcting male percentage calculation
-    df['PESEX_mean'] = (df['PESEX_mean'] - 1) * -100
-
-    # Simplifying and aggregating categories
-    race_categories = {**{f'PTDTRACE_{i}': 'Other' for i in range(5, 27)}, 'PTDTRACE_1': 'White', 'PTDTRACE_2': 'Black', 'PTDTRACE_3': 'Native American', 'PTDTRACE_4': 'Asian'}
-    edu_categories = {**{f'PEEDUCA_{i}': 'No Diploma' for i in range(31, 39)}, **{f'PEEDUCA_{i}': 'High School Degree' for i in range(39, 41)}, **{f'PEEDUCA_{i}': 'Higher Education Degree' for i in range(41, 47)}}
-    marital_categories = {**{f'PEMARITL_{i}': 'Not Married' for i in [-1, 3, 4, 6]}, 'PEMARITL_1': 'Married', 'PEMARITL_2': 'Married', 'PEMARITL_5': 'Married'}
-    employment_categories = {**{f'PEMLR_{i}': 'Unemployed' for i in [-1, 3, 4, 6, 7]}, 'PEMLR_1': 'Employed', 'PEMLR_2': 'Employed', 'PEMLR_5': 'Retired'}
-    income_categories = {'HEFAMINC_1': 'Less than 5,000 USD', **{f'HEFAMINC_{i}': 'Between 5,000 and 25,000 USD' for i in range(2, 8)}, **{f'HEFAMINC_{i}': 'Between 25,000 and 50,000 USD' for i in range(8, 12)}, **{f'HEFAMINC_{i}': 'Between 50,000 and 150,000 USD' for i in range(12, 16)}, 'HEFAMINC_16': '150,000 USD or More'}
     
-    for col, mapping in zip(['PTDTRACE', 'PEEDUCA', 'PEMARITL', 'PEMLR', 'HEFAMINC'], [race_categories, edu_categories, marital_categories, employment_categories, income_categories]):
-        categories = [col + '_' + str(key) for key, value in mapping.items()]
-        df[col] = df[categories].dot(df[categories].columns + ',').str.rstrip(',')
-        for k, v in mapping.items():
-            df[col] = df[col].str.replace(k, v, regex=False)
-        df[col] = df[col].str.rstrip(',')
+    # Adjusting PESEX_mean to reflect correct percentage
+    df['PESEX_mean'] = (df['PESEX_mean'] - 1) * -100 - 100
 
-    # Aggregate yearly data for categorical variables
-    categorical_data = df.groupby(['Year', 'City', 'PTDTRACE', 'PEEDUCA', 'PEMARITL', 'PEMLR', 'HEFAMINC']).size().reset_index(name='counts')
-    categorical_data['percentage'] = categorical_data.groupby(['Year', 'City'])['counts'].transform(lambda x: x / x.sum() * 100)
-    return df, categorical_data
+    # Aggregating monthly data into yearly and recoding variables
+    # Race
+    race_columns = [f'PTDTRACE_{i}' for i in range(1, 27)]
+    df['White'] = df['PTDTRACE_1']
+    df['Black'] = df['PTDTRACE_2']
+    df['Native American'] = df['PTDTRACE_3']
+    df['Asian'] = df['PTDTRACE_4']
+    df['Other Race'] = df[race_columns[4:]].sum(axis=1)
+    
+    # Education
+    df['No Diploma'] = df[[f'PEEDUCA_{i}' for i in range(31, 39)] + ['PEEDUCA_-1']].sum(axis=1)
+    df['High School Degree'] = df[[f'PEEDUCA_{i}' for i in range(39, 41)]].sum(axis=1)
+    df['Higher Education Degree'] = df[[f'PEEDUCA_{i}' for i in range(41, 47)]].sum(axis=1)
+    
+    # Marital Status
+    df['Married'] = df[['PEMARITL_1', 'PEMARITL_2', 'PEMARITL_5']].sum(axis=1)
+    df['Not Married'] = df[['PEMARITL_-1', 'PEMARITL_3', 'PEMARITL_4', 'PEMARITL_6']].sum(axis=1)
+    
+    # Employment Status
+    df['Employed'] = df[['PEMLR_1', 'PEMLR_2']].sum(axis=1)
+    df['Unemployed'] = df[['PEMLR_-1', 'PEMLR_3', 'PEMLR_4', 'PEMLR_6', 'PEMLR_7']].sum(axis=1)
+    df['Retired'] = df['PEMLR_5']
+    
+    # Household Income
+    df['Less than $5,000'] = df['HEFAMINC_1']
+    df['Between $5,000 and $25,000'] = df[[f'HEFAMINC_{i}' for i in range(2, 8)]].sum(axis=1)
+    df['Between $25,000 and $50,000'] = df[[f'HEFAMINC_{i}' for i in range(8, 12)]].sum(axis=1)
+    df['Between $50,000 and $150,000'] = df[[f'HEFAMINC_{i}' for i in range(12, 16)]].sum(axis=1)
+    df['$150,000 or More'] = df['HEFAMINC_16']
+    
+    # Group by Year and City, summing up the new categories
+    grouping_cols = ['White', 'Black', 'Native American', 'Asian', 'Other Race', 'No Diploma', 'High School Degree', 'Higher Education Degree',
+                     'Married', 'Not Married', 'Employed', 'Unemployed', 'Retired', 'Less than $5,000', 'Between $5,000 and $25,000',
+                     'Between $25,000 and $50,000', 'Between $50,000 and $150,000', '$150,000 or More']
+    df = df.groupby(['Year', 'City'])[grouping_cols + ['PESEX_mean', 'PRTAGE_mean']].sum().reset_index()
 
-data, categorical_data = load_data()
+    # Convert counts to percentages
+    for col in grouping_cols:
+        df[col] = df[col] / df[grouping_cols].sum(axis=1) * 100
+
+    return df
+
+data = load_data()
 
 # Sidebar for selecting the city
 selected_city = st.sidebar.selectbox('Select a City:', data['City'].unique())
 
 # Filter data based on selected city
 city_data = data[data['City'] == selected_city]
-categorical_city_data = categorical_data[categorical_data['City'] == selected_city]
 
 # Header
 st.title('Demographic Trends Analysis')
 st.write(f"Data visualization for {selected_city}")
 
-# Numeric variable - Mean Age
-st.header("Average Age Over Time")
-fig, ax = plt.subplots()
-ax.plot(city_data['Date'], city_data['PRTAGE_mean'], marker='o')
-ax.set_title('Average Age Over Time')
-ax.set_xlabel('Date')
-ax.set_ylabel('Average Age')
-ax.grid(True)
-st.pyplot(fig)
-
-# Gender ratio - Corrected percentage calculation
-st.header("Percentage of Male Population Over Time")
-fig, ax = plt.subplots()
-ax.plot(city_data['Date'], city_data['PESEX_mean'], marker='o', color='b')
-ax.set_title('Percentage of Male Population Over Time')
-ax.set_xlabel('Date')
-ax.set_ylabel('Percentage of Males')
-ax.grid(True)
+# Numeric variables
+st.header("Average Age and Gender Ratio Over Time")
+fig, axs = plt.subplots(2, 1, figsize=(10, 10))
+axs[0].plot(city_data['Year'], city_data['PRTAGE_mean'], marker='o')
+axs[0].set_title('Average Age Over Time')
+axs[0].set_xlabel('Year')
+axs[0].set_ylabel('Average Age')
+axs[1].plot(city_data['Year'], city_data['PESEX_mean'], marker='o', color='b')
+axs[1].set_title('Percentage of Male Population Over Time')
+axs[1].set_xlabel('Year')
+axs[1].set_ylabel('Percentage of Males')
+for ax in axs:
+    ax.grid(True)
 st.pyplot(fig)
 
 # Categorical count variables - Stacked Bar Charts
-st.header("Categorical Variable Distributions by Year")
-for var in ['PTDTRACE', 'PEEDUCA', 'PEMARITL', 'PEMLR', 'HEFAMINC']:
-    st.subheader(f'{var} Distribution Over Time')
+categorical_groups = {
+    'Race': ['White', 'Black', 'Native American', 'Asian', 'Other Race'],
+    'Education Level': ['No Diploma', 'High School Degree', 'Higher Education Degree'],
+    'Marital Status': ['Married', 'Not Married'],
+    'Employment Status': ['Employed', 'Unemployed', 'Retired'],
+    'Household Income': ['Less than $5,000', 'Between $5,000 and $25,000', 'Between $25,000 and $50,000', 'Between $50,000 and $150,000', '$150,000 or More']
+}
+
+for group_name, categories in categorical_groups.items():
+    st.subheader(f'{group_name} Distribution Over Time')
     fig, ax = plt.subplots()
-    pivot_df = categorical_city_data.pivot(index='Year', columns=var, values='percentage')
-    pivot_df.plot(kind='bar', stacked=True, ax=ax)
-    ax.set_title(f'{var} Distribution Over Time')
+    bottom = None
+    for category in categories:
+        ax.bar(city_data['Year'], city_data[category], bottom=bottom, label=category)
+        bottom = city_data[category] if bottom is None else bottom + city_data[category]
+    ax.set_title(f'{group_name} Distribution Over Time')
     ax.set_xlabel('Year')
     ax.set_ylabel('Percentage')
     ax.legend(title='Categories')
+    ax.grid(True)
     st.pyplot(fig)
